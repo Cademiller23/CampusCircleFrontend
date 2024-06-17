@@ -1,26 +1,27 @@
-import { View, Text, Image, TouchableOpacity, Pressable, TextInput, Alert, Platform, fetch, StyleSheet } from 'react-native';
-import React, {useRef, useState} from 'react';
+import { View, Text, Image, TouchableOpacity, Pressable, TextInput, Alert, Platform, StyleSheet } from 'react-native';
+import React, {useRef, useState, useEffect} from 'react';
 import {widthPercentageToDP as wp, heightPercentageToDP as hp} from 'react-native-responsive-screen';
 import { StatusBar } from 'expo-status-bar';
+import { useNavigation } from '@react-navigation/native';
 import {Feather, Octicons} from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // Correct import
 import {Link} from 'expo-router'
 import { Loading } from './../Components/Loading';
 import { CustomKeyboardView } from './../Components/CustomKeyboardView';
 import LottieView from 'lottie-react-native'
 export function SignUp() {
-    const router = useRouter(); // Get router for navigation
+    const navigation = useNavigation();
     const [loading, setLoading] = useState(false); // State for loading indicator
-
+    
     // Create refs for form input values
-    const emailRef = useRef(null);
-    const passwordRef = useRef(null);
-    const usernameRef = useRef(null);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('');
 
     const handleRegister = async () => {
         // Check if all fields are filled
-        if (!emailRef.current?.value || !passwordRef.current?.value || !usernameRef.current?.value) {
+        if (!email || !password || !username) {
             Alert.alert('Sign Up', 'Please fill all the fields!');
             return;
         }
@@ -28,26 +29,26 @@ export function SignUp() {
         setLoading(true); // Show loading indicator
 
         try {
-            const response = await fetch('http://192.168.30.171:5000/register', {
+            const response = await fetch('http://127.0.0.1:5000/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: emailRef.current.value,
-                    username: usernameRef.current.value,
-                    password: passwordRef.current.value,
+                    email: email,
+                    username: username,
+                    password: password,
                 }),
             });
             const data = await response.json();
-
             setLoading(false); // Hide loading indicator
 
             if (!response.ok) {
                 Alert.alert('Sign Up', data.error || 'Registration Failed');
             } else {
                 // Navigate to profile setup screen with user ID
-                router.push({ pathname: 'profileSetup', params: { userId: data.id } }); 
+                await AsyncStorage.setItem('registered', 'true');
+                navigation.navigate('ProfileSetup', { userId: data.id }); // Use navigation.navigate
             }
         } catch (error) {
             setLoading(false); // Hide loading indicator
@@ -74,7 +75,8 @@ export function SignUp() {
                   <View style={styles.inputRow}>
                     <Octicons name="mail"size={hp(2.7)} color='gray' />
                     <TextInput
-                    ref={emailRef}
+                    value={email}
+                    onChangeText={setEmail}
                     style={styles.input}
                     placeholder='Email Address'
                     placeholderTextColor={'gray'}/>
@@ -84,7 +86,8 @@ export function SignUp() {
                 <View style={styles.inputRow}>
                     <Octicons name="lock"size={hp(2.7)} color='gray' />
                     <TextInput
-                    ref={passwordRef}
+                    value={password}
+                    onChangeText={setPassword}
                     style={styles.input}
                     placeholder='Password'
                     secureTextEntry
@@ -95,7 +98,8 @@ export function SignUp() {
                 <View style={styles.inputRow}>
                     <Feather name="user"size={hp(2.7)} color='gray' />
                     <TextInput
-                    ref={usernameRef}
+                    value={username}
+                    onChangeText={setUsername}
                     style={styles.input}
                     placeholder='Username'
                     placeholderTextColor={'gray'}/>
@@ -103,17 +107,17 @@ export function SignUp() {
                 </View>
                 <View> 
                     {
-                        loading? (
-                            <View style={styles.loadingContainer}>
-                           <Loading size={hp(6.5)} />
-                                </View>
-                        ): (
+                        // loading? (
+                        //     <View style={styles.loadingContainer}>
+                        //    <Loading size={hp(6.5)} />
+                        //         </View>
+                        // ): (
                             <TouchableOpacity onPress={handleRegister}  style={styles.signUpButton}>
                             <Text style={styles.buttonText}>
                                 Sign Up
                             </Text>
                         </TouchableOpacity>
-                        )
+                        // )
                     }
                 </View>
                
@@ -121,9 +125,9 @@ export function SignUp() {
 
                 <View style={styles.signInPrompt}>
                     <Text style={styles.signInText}>Already have an account?</Text>
-                    <Pressable> 
+                    <TouchableOpacity onPress={() => navigation.navigate('SignIn')}> 
                     <Text  style={styles.signInLink}>Sign In</Text>
-                    </Pressable>
+                    </TouchableOpacity>
                     
                 </View>
 

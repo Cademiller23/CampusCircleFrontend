@@ -4,12 +4,13 @@ import { Image } from 'expo-image'
 import * as ImagePicker from 'expo-image-picker';
 import { AntDesign } from '@expo/vector-icons';
 
+import { useNavigation, StackActions } from '@react-navigation/native';
 
-export default function ProfileSetup({ route }) {
+export function ProfileSetup({ route }) {
     const {width, height} = useWindowDimensions();
     const userId  = route?.params?.userId;
     const [profileImage, setProfileImage ] = useState(null);
-
+    const navigation = useNavigation();
     const pickImage = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.All,
@@ -30,18 +31,31 @@ export default function ProfileSetup({ route }) {
             type: 'image/jpeg',
             name: 'profileImage.jpg',
         });
-        
+     
         try {
-            const response = await fetch(`http://192.168.30.171:5000/users/${userId}`, {
+            const response = await fetch(`http://127.0.0.1:5000/users/${userId}`, {
                 method: 'PATCH',
-                body: FormData,
+                body: formData,
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            
             });
 
             if(!response.ok) {
                 throw new Error('Profile Update Failed')
             }
-            // Handle Successful profile update e.g., navigate to another screen
-            Alert.alert('Success', 'Profile updated successfully!');
+            const data = await response.json(); // Get response data
+            
+            Alert.alert('Sucess', 'Profile Updated Successfully!', [
+                {
+                    text: 'OK',
+                },
+            ]);
+            navigation.navigate('Main', {
+              screen: 'Home',
+              params: {userId: data}
+            })
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'An error occured while updating the profile.');
@@ -130,3 +144,5 @@ const styles = StyleSheet.create({
       fontWeight: 'bold',
     },
   });
+
+  export default ProfileSetup;

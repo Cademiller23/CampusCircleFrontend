@@ -1,21 +1,26 @@
 import { View, Text, Image, TouchableOpacity, Pressable, TextInput, Alert, Platform, fetch, StyleSheet } from 'react-native';
-import React, {useRef, useState} from 'react';
+import React, {useRef, useState, useEffect} from 'react';
 import {widthPercentageToDP as wp, heightPercentageToDP as hp} from 'react-native-responsive-screen';
 import { StatusBar } from 'expo-status-bar';
 import {Feather, Octicons} from '@expo/vector-icons';
-import { useRouter, Link } from 'expo-router';
-// Correct import
+import { useNavigation, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Loading } from './../Components/Loading';
 import { CustomKeyboardView } from './../Components/CustomKeyboardView';
 import LottieView from 'lottie-react-native'
 export function SignIn() {
-    const router = useRouter(); // Get router for navigation
+    const navigation = useNavigation();
     const [loading, setLoading] = useState(false); // State for loading indicator
-
+    const route = useRoute();
     // Create refs for form input values
     const passwordRef = useRef(null);
     const usernameRef = useRef(null);
-
+    useEffect(() => {
+        // Check if the user is already signed in
+        if (route.params?.signedIn) {
+            navigation.navigate('Home');
+        }
+    }, [route.params]); 
     const handleSignIn = async () => {
         // Check if all fields are filled
         if (!passwordRef.current?.value || !usernameRef.current?.value) {
@@ -43,7 +48,8 @@ export function SignIn() {
             if (!response.ok) {
                 Alert.alert('Sign In', data.error || 'Login Failed');
             } else {
-                // Navigate to profile setup screen with user ID
+                await AsyncStorage.setItem('userData', JSON.stringify(data)); // Store userData
+                navigation.navigate('Home'); // Navigate to Home after successful login 
                 console.log("Sign In Successful", data)
             }
         } catch (error) {
@@ -108,7 +114,7 @@ export function SignIn() {
 
                 <View style={styles.signUpPrompt}>
                     <Text style={styles.signUpText}>Don't have an account?</Text>
-                    <Pressable> 
+                    <Pressable onPress={() => navigation.navigate('SignUp')}> 
                     <Text  style={styles.signUpLink}>Sign Up</Text>
                     </Pressable>
                     
