@@ -1,28 +1,36 @@
 import { Entypo, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import React, {useState, useRef, useEffect, useMemo} from 'react';
-import {View, StyleSheet, Alert, Text, ScrollView, Pressable, FlatList, Image, Animated, Dimensions,Modal, Easing, TouchableOpacity} from 'react-native';
+import {View, StyleSheet, Alert, Text, ScrollView, Pressable, FlatList, Image, Animated, Dimensions,Modal, Easing, TouchableOpacity, ActivityIndicator} from 'react-native';
 import {widthPercentageToDP as wp, heightPercentageToDP as hp} from 'react-native-responsive-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../Components/Loading';
+import { render } from 'react-dom';
 const {width} = Dimensions.get('window');
-const NUM_COLUMNS = 100000;
+const NUM_COLUMNS = 3;
 const GRID_CARD_CONTAINER_PADDING_HORIZONTAL = 2; // Padding within the container
 const ITEM_MARGIN = 2;
 const MAX_GRID_HEIGHT = 314; // Set your desired max height here
-
+/*
+    Post Count only updates when their posts have a like count 
+*/
 const Divider = () => {
     return (
         <View style={styles.divider} />
     );
 };
 
-export default function Home({route}) {
+export default function Home({route, navigation}) {
     const [userData, setUserData] = useState(null); 
     const [profileImage, setProfileImage] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [posts, setPosts] = useState([]);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
     const itemWidth = (width - 2 * GRID_CARD_CONTAINER_PADDING_HORIZONTAL - (NUM_COLUMNS - 1) * ITEM_MARGIN) / NUM_COLUMNS;
     const userId  = route?.params?.userId;
     useEffect(() => {
+
+      
         const fetchUserData = async () => {
             try {
                     const response = await fetch('http://127.0.0.1:5000/users/me'); //Fetch by ID ; // Fetch by ID
@@ -31,7 +39,7 @@ export default function Home({route}) {
                         const userData = await response.json();
                         console.log(userData)
                         setUserData(userData);
-                        setProfileImage(`http://127.0.0.1:5000${userData.profile_picture}`);
+                        setProfileImage(`data:image/jpeg;base64,${userData.profile_picture}`);
     
                     } else {
                         throw new Error('User data not found');
@@ -46,15 +54,67 @@ export default function Home({route}) {
         };
   
             fetchUserData();
+            fetchPosts(page);
    
      
     }, []);
-    // Sample data for the FlatLists 
-    const gridData = Array.from({length: 100}, (_, index) => ({
-        id: index + 1, 
-        source: require('./../../assets/Cade.jpeg')
-    }));
+    useEffect(() => {
 
+        // Check if we should refetch posts (After a new post is created)
+        const unsubscribe = navigation.addListener('focus', () => {
+            if(userData) { // ensure user
+                setPage(1);
+                fetchPosts(1); // fetch the first page again
+            }
+        });
+        return unsubscribe; // Clean up the listener
+    }, [navigation, userData]);
+    // Sample data for the FlatLists 
+    const fetchPosts = async (currentPage) => {
+        try {
+            const response = await fetch(`http://127.0.0.1:5000/posts`);
+            
+            if(response.ok) {
+                const data = await response.json();
+              
+                const newPosts = data.posts || []; 
+                if(currentPage === 1) {
+                    setPosts(data.posts)
+                } else {
+                    setPosts(prevPosts => [...prevPosts, data.posts]);
+                }
+            setHasMore(data.has_next);
+            } else {
+                throw new Error('Posts not found');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'An error occured while fetching posts.')
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    const handleLoadMore = () => {
+        if(hasMore) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            fetchPosts(nextPage);
+        }
+    };
+
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const renderItem = ({ item}) => {
+        const base64Image = `data:${item.content_type};base64,${item.content_url}`;
+        const uniqueKey = item.id ? item.id.toString() : Math.random().toString();
+        return (
+            <View style={[styles.gridItem, { width: itemWidth, height: itemWidth }]}> 
+            {!imageLoaded && <ActivityIndicator size="small" />}
+                <Image source={{ uri: base64Image }} style={styles.gridImage}
+                onLoad={() => setImageLoaded(true)}/>
+            </View>
+        );
+    }
+   
     return (
         <View style={styles.container}>
             <ScrollView>
@@ -64,8 +124,10 @@ export default function Home({route}) {
                 ) : userData ? ( 
                     <View stle={styles.Homeheader}>
                         <Image
-                            source={profileImage ? { uri: profileImage } : require('./../../assets/Cade.jpeg')} // Fallback image
+                            source={{ uri: profileImage }} // Fallback image
                             style={styles.profileImage} 
+                            onError={(e) => console.error("Image loading error: ", e.nativeEvent.error)}
+                            defaultSource={require('./../../assets/Cade.jpeg')}
                         />
                         <View style={styles.userInfoContainer}>
                             <Text style={styles.username}>{userData.username}</Text>
@@ -91,20 +153,19 @@ export default function Home({route}) {
         <Entypo name="arrow-with-circle-right" size={24} color='black' />
         </TouchableOpacity>
         <Divider/>
-       <ScrollView>
-           <FlatList
-           data={gridData}
-           renderItem={({ item}) => (
-            <View style={[styles.gridItem, {width: 50, height: 50 }]}>
-                <Image source={item.source}style={styles.gridImage} />
-            </View>
-           )}
-           keyExtractor={item => item.id.toString()}
-           numColumns={NUM_COLUMNS}
-           contentContainerStyle={styles.flatListContentContainer}
-         />
-         </ScrollView>
        
+                        <FlatList
+                            data={posts}
+                            renderItem={renderItem}
+                            keyExtractor={(item) => item.id?.toString() ?? Math.random().toString()}
+                            numColumns={NUM_COLUMNS}
+                            contentContainerStyle={styles.flatListContentContainer}
+                            onEndReached={handleLoadMore}
+                            onEndReachedThreshold={0.1}
+                            ListFooterComponent={hasMore && <ActivityIndicator size="large" color="#007AFF" />}
+                            ListEmptyComponent={!isLoading && <Text style={styles.noPostsText}>No Posts Yet. Start Sharing!</Text>}
+                        />
+            
         </View>
         <View style={styles.gridCardContainer}>
         <TouchableOpacity style={styles.galleryHeader}>
@@ -117,6 +178,9 @@ export default function Home({route}) {
             <Text style={styles.galleryText}>All Comments...</Text>
         <Entypo name="arrow-with-circle-right" size={24} color='black' />
         </TouchableOpacity>
+    {/*
+    Comment FlatList of all the comments
+     */}
         </View> 
         </ScrollView>
         </View>
@@ -125,6 +189,12 @@ export default function Home({route}) {
 }
 
 const styles = StyleSheet.create ({
+    noPostsText: {
+        textAlign: 'center',
+        padding: 20,
+        fontSize: 16,
+        color: '#666'
+    },
     Homeheader: {
         flexDirection: 'row',
         alignItems: 'flex-start',

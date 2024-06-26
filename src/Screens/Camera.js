@@ -39,7 +39,9 @@ export default function CameraScreen() {
     const takePicture = async () => {
         if(cameraRef.current) {
             const photo = await cameraRef.current.takePictureAsync({quality: 0.8});
-            navigation.navigate('CameraStyling', {photoUri: photo.uri});
+            navigation.navigate(
+              'CameraStyling',
+            {photoUri: photo.uri});
         }
     };
     const pickImage = async () => {
