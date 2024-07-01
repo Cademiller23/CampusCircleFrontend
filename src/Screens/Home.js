@@ -5,6 +5,7 @@ import {widthPercentageToDP as wp, heightPercentageToDP as hp} from 'react-nativ
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../Components/Loading';
 import { render } from 'react-dom';
+import { useIsFocused } from '@react-navigation/native';
 const {width} = Dimensions.get('window');
 const NUM_COLUMNS = 3;
 const GRID_CARD_CONTAINER_PADDING_HORIZONTAL = 2; // Padding within the container
@@ -25,9 +26,13 @@ export default function Home({route, navigation}) {
     const [isLoading, setIsLoading] = useState(true);
     const [posts, setPosts] = useState([]);
     const [page, setPage] = useState(1);
+    const [comments, setComments] = useState([]);
     const [hasMore, setHasMore] = useState(true);
     const itemWidth = (width - 2 * GRID_CARD_CONTAINER_PADDING_HORIZONTAL - (NUM_COLUMNS - 1) * ITEM_MARGIN) / NUM_COLUMNS;
     const userId  = route?.params?.userId;
+    const isFocused = useIsFocused();
+    const [savedPhotos, setSavedPhotos] = useState([]);
+
     useEffect(() => {
 
       
@@ -46,7 +51,7 @@ export default function Home({route, navigation}) {
                     }
                
             } catch (error) {
-                Alert.alert('Error', 'An error occured while fetching user data.')
+                Alert.alert('Error', 'An error occured while fetching user data.');
                 console.error(error);
             }  finally {
                 setIsLoading(false);
@@ -55,9 +60,44 @@ export default function Home({route, navigation}) {
   
             fetchUserData();
             fetchPosts(page);
+            fetchSavedPosts();
    
      
     }, []);
+    const fetchSavedPosts = async () => {
+        try {
+            setIsLoading(true);
+            const response = await fetch(`http://127.0.0.1:5000/saved_posts`);
+            if(response.ok) {
+                const saved_photo_data = await response.json();
+                setSavedPhotos(saved_photo_data);
+
+            } else {
+                throw new Error('Saved Posts not found');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'An error occured while fetching Saved Posts.');
+            console.error(error);
+        }
+    };
+    const fetchComments = async ()=> {
+        try {
+            setIsLoading(true);
+            const response = await fetch(`http://127.0.0.1:5000/comments/me`);
+
+            if(response.ok) {
+                const data = await response.json();
+                setComments(data); // Directly set the comment from the API response
+            } else {
+                throw new Error('Comments not found');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'An error occured whilefetching comments.');
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
     useEffect(() => {
 
         // Check if we should refetch posts (After a new post is created)
@@ -65,10 +105,11 @@ export default function Home({route, navigation}) {
             if(userData) { // ensure user
                 setPage(1);
                 fetchPosts(1); // fetch the first page again
+                fetchComments();
             }
         });
         return unsubscribe; // Clean up the listener
-    }, [navigation, userData]);
+    }, [isFocused, userData]);
     // Sample data for the FlatLists 
     const fetchPosts = async (currentPage) => {
         try {
@@ -114,6 +155,21 @@ export default function Home({route, navigation}) {
             </View>
         );
     }
+    const renderCommentItem = ({ item }) => {
+        return (
+            <View style={styles.commentItem}>
+                <Text style={styles.commentText}>{item.text}</Text>
+            </View>
+        );
+    }
+    renderSavedItem = ({ item }) => {
+        const base64Image = `data:${item.content_type};base64,${item.content_url}`;
+    return (
+      <View style={[styles.gridItem, { width: itemWidth, height: itemWidth }]}>
+        <Image source={{ uri: base64Image }} style={styles.gridImage} />
+      </View>
+    );
+  };
    
     return (
         <View style={styles.container}>
@@ -172,12 +228,38 @@ export default function Home({route, navigation}) {
             <Text style={styles.galleryText}>All Saved...</Text>
         <Entypo name="arrow-with-circle-right" size={24} color='black' />
         </TouchableOpacity>
+
+        <FlatList
+                            data={savedPhotos}
+                            renderItem={renderSavedItem}
+                            keyExtractor={(item) => item.id?.toString() ?? Math.random().toString()}
+                            numColumns={NUM_COLUMNS}
+                            contentContainerStyle={styles.flatListContentContainer}
+                            onEndReached={handleLoadMore}
+                            onEndReachedThreshold={0.1}
+                            ListFooterComponent={hasMore && <ActivityIndicator size="large" color="#007AFF" />}
+                            ListEmptyComponent={!isLoading && <Text style={styles.noPostsText}>No Posts Yet. Start Sharing!</Text>}
+                        />
         </View> 
         <View style={styles.gridCardContainer}>
         <TouchableOpacity style={styles.galleryHeader}>
             <Text style={styles.galleryText}>All Comments...</Text>
         <Entypo name="arrow-with-circle-right" size={24} color='black' />
+        <Divider/>
         </TouchableOpacity>
+        {isLoading ? (
+            <ActivityIndicator size="large" color="#007AFF" style={styles.loadingIndicator} />
+          ) : (
+       
+        <FlatList
+        data={comments}
+        renderItem={renderCommentItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.flatListContentContainer}
+        ListEmptyComponent={() => <Text style={styles.noPostsText}>No Comments Yet</Text>}
+                        />
+          )}
+       
     {/*
     Comment FlatList of all the comments
      */}
@@ -189,6 +271,23 @@ export default function Home({route, navigation}) {
 }
 
 const styles = StyleSheet.create ({
+    commentItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#ddd',
+
+    },
+    loadingIndicator: {
+        marginTop: 20,
+    },
+    commentText: {
+        fontSize: 16,
+    },
+    postReference: {
+        fontSize: 12,
+        color: '#777',
+        marginTop: 5,
+    },
     noPostsText: {
         textAlign: 'center',
         padding: 20,

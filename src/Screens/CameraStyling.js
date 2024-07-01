@@ -86,7 +86,7 @@ export default function CameraStyling({route, navigation}) {
    
       try {
           const response = await fetch(`http://127.0.0.1:5000/posts`, {
-              method: 'Post',
+              method: 'POST',
               body: formData,
              
           

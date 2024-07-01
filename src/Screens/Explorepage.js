@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import base64 from 'react-native-base64';
 
 import {
@@ -11,43 +11,22 @@ import {
   TextInput,
   Button,
   ScrollView,
+  ActivityIndicator,
   Alert, Image
 } from "react-native";
 import Icon from "react-native-vector-icons/FontAwesome";
+import Entypo from '@expo/vector-icons/Entypo';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Modal from "react-native-modal"; // Use react-native-modal for additional features
 
 import { Video } from "expo-av";
 import { useFocusEffect } from "@react-navigation/native";
 import Loading from "../Components/Loading";
 
-const initialData = [
-  {
-    id: "1",
-    title: "Lebron and Curry",
-    timestamp: 300,
-    username: "lebrongoat",
-    videoUri: "https://www.w3schools.com/html/movie.mp4",
-    thumbnail:
-      "https://cdn.vox-cdn.com/thumbor/RgKKALcRqv7p-AJTd3O-bJTBLr4=/0x30:4014x2706/1200x800/filters:focal(0x30:4014x2706)/cdn.vox-cdn.com/uploads/chorus_image/image/49894465/usa-today-9339378.0.jpg",
-    likeCount: 110,
-    comments: ["fraud", "not the goat", "L"],
-  },
-  {
-    id: "2",
-    title: "Jayson Tatum Dunking",
-    timestamp: 15,
-    username: "tatumgoat",
-    videoUri: "https://www.w3schools.com/html/movie.mp4",
-    thumbnail:
-      "https://assets.apnews.com/0b/92/8816a2bc817bba08164ebe9444ab/e8853552f3e0418ca5f0938ea63b43e7",
-    likeCount: 110,
-    comments: ["goat", "so sexy", "banner #18"],
-  },
-  // Add more posts as needed
-];
+
 
 const ExplorePage = () => {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState(null);
   const [votes, setVotes] = useState({});
   const [posts, setPosts] = useState([]);
   const [isModalVisible, setModalVisible] = useState(false);
@@ -57,29 +36,19 @@ const ExplorePage = () => {
   const [loading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [postComments, setPostComments] = useState({}); // Comments for each post
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
 
   const commentListRef = useRef(null);
-  /*
-    const [comments, setComments] = useState([]);
-    function CommentSection(post_id) {
-        const response = await fetch('http://-----:5000/comments/${post_id}')
-        const data = response.json();
-    
-
-    }
-    function upVotePost(post_id) {
-        
-    }
-
-  */
+ 
  useFocusEffect(
   React.useCallback(() => {
     fetchPosts(); // Fetch posts again whe the screen gets focus
-
   }, [selectedCategoryFilter, currentPage]) // Fetch also when filter changes
 
  );
+ 
  const fetchPosts = async () => {
   try {
     setIsLoading(true); // Show Loading Indicator
@@ -169,52 +138,133 @@ const ExplorePage = () => {
       return newVotes;
     });
   };
+  const fetchCommentsForPost = async (postId) => {
+    console.log(postId);
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/newComments/${postId}`);
+      
+      if(response.ok) {
+        const data = await response.json();
+        console.log(data);
+        setPostComments(prev => ({ ...prev, [postId]: data })); 
+        
+      } else if (response.status === 404) {
+        // Handle the "No Comments Yet" case
+        setPostComments(prev => ({ ...prev, [postId]: [] }));  // Set an empty array
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch comments'); // Throw with the backend's error message
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occured while fetching comments.')
 
-  const handleOpenComments = (post) => {
-    setSelectedPost(post);
-    setModalVisible(true);
-  };
-
-  const handleAddComment = () => {
-    if (newComment.trim()) {
-      setData((prevData) => {
-        const newData = prevData.map((post) => {
-          if (post.id === selectedPost.id) {
-            const updatedPost = {
-              ...post,
-              comments: [...post.comments, newComment],
-            };
-            setSelectedPost(updatedPost);
-            return updatedPost;
-          }
-          return post;
-        });
-        return newData;
-      });
-
-      setNewComment("");
-
-      // Scroll to the end of the FlatList
-      setTimeout(() => {
-        if (commentListRef.current) {
-          commentListRef.current.scrollToEnd({ animated: true });
-        }
-      }, 100); // delay to ensure state update is complete
     }
   };
+  useEffect(() => {
+    if(selectedPost) {
+      setModalVisible(true);
+    } else {
+      setModalVisible(false);
+    }
+  }, [selectedPost]);
+  const handleOpenComments = (post) => {
+    setSelectedPost(post);
+    setIsLoadingComments(true);
+    fetchCommentsForPost(post.id)
+    .finally(() => setIsLoadingComments(false));
+  };
+  const handleAddComment = async () => {
+    if (newComment.trim() === "") return; //  To not submit empty comments
+    try {
+      setIsLoadingComments(true)
+      const response = await fetch('http://127.0.0.1:5000/create_comments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+
+        },
+        body: JSON.stringify({
+          post_id: selectedPost.id,
+          text: newComment,
+        }),
+      });
+      if (response.ok) {
+        const newCommentData = await response.json();
+        setPostComments(prev => ({
+          ...prev,
+          [selectedPost.id]: [...(prev[selectedPost.id] || []), newCommentData], // Add new comment
+        }));
+        setNewComment("");
+        fetchCommentsForPost(selectedPost.id);
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.error || 'Failed to add comment');
+      
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while adding the comment.');
+    }
+  };
+ 
+  const handleSave = async (post) => {
+    const userId = await AsyncStorage.getItem('user_id');
+    if (!userId) {
+      // Handle the case where the user is not logged in (e.g., show a login screen)
+      return Alert.alert('Error', 'You must be logged in to save a post.');
+    }
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/save_post/${post.id}`, {
+        method: 'POST',
+        headers: {
+          'content_type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: userId
+        }),
+      });
+      if(response.ok) {
+        Alert.alert('Success', 'Post saved successfully!');
+      } else {
+        const errorData = await response.json();
+        Alert.alert('Error', errorData.error || 'Failed to save post.');
+      }
+
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while saving the post.');
+    }
+      
+  };
+
 
   const renderItem = ({ item }) => {
     const voteStatus = votes[item.id];
     const base64Image = `data:${item.content_type};base64,${item.content_url}`
+    const username = item.username || "Unknown User"; 
     return (
+      
       <View style={styles.postContainer}>
+        <TouchableOpacity
+        style={styles.commentButton}
+        onPress={() => handleSave(item)}>
+          <Entypo name="bookmark" size={24} color="black" />
+        </TouchableOpacity>
+         <TouchableOpacity
+            style={styles.commentButton}
+            onPress={() => handleOpenComments(item)}
+          >
+            <Icon name="comment" size={24} color="#666" />
+          </TouchableOpacity>
         <Image
           source={{ uri: base64Image }}
           style={styles.video}
           resizeMode="cover"
         />
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.username}>@{item.username}</Text>
+        <Text style={styles.username}>@{username}</Text>
+        
         <Text style={styles.timeStamp}>{processTime(item.timestamp)}</Text>
         <View style={styles.voteBar}>
           <TouchableOpacity
@@ -239,12 +289,7 @@ const ExplorePage = () => {
             />
           </TouchableOpacity>
           <Text style={styles.likeCount}>{item.likeCount} </Text>
-          <TouchableOpacity
-            style={styles.commentButton}
-            onPress={() => handleOpenComments(item)}
-          >
-            <Icon name="comment" size={24} color="#666" />
-          </TouchableOpacity>
+         
         </View>
       </View>
     );
@@ -285,20 +330,34 @@ const ExplorePage = () => {
         {/* Model sends a onPress to CommentSection*/}
       <Modal
         isVisible={isModalVisible}
-        onBackdropPress={() => setModalVisible(false)}
+        onBackdropPress={() => {
+          setModalVisible(false);
+          setSelectedPost(null);
+          setPostComments({});
+        }}
         style={styles.modal}
       >
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>Comments</Text>
-          <FlatList
-            ref={commentListRef}
-            data={selectedPost?.comments || []}
-            renderItem={({ item }) => (
-              <Text style={styles.comment}>{item}</Text>
-            )}
-            keyExtractor={(item, index) => index.toString()}
-            style={styles.commentList}
-          />
+          {isLoadingComments ? (
+            <ActivityIndicator size="large" color="#007AFF" style={styles.loadingIndicator} />
+          ) : postComments[selectedPost?.id] && postComments[selectedPost?.id].length > 0 ? (
+            <FlatList
+              ref={commentListRef}
+              data={postComments[selectedPost?.id] || []} // Comments specific to this post
+              renderItem={({ item }) => (
+                <View style={styles.commentItem}>
+                  <Text style={styles.commentText}>{item.text}</Text>
+                  <Text style={styles.commentUsername}>@{item.username}</Text>
+                </View>
+              )}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.commentList}
+              ListEmptyComponent={() => <Text style={styles.noPostsText}>No Comments Yet</Text>}
+            />
+          ) : (
+            <Text>NO Comments YET</Text>
+          )}
           <TextInput
             style={styles.commentInput}
             value={newComment}
@@ -371,10 +430,11 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 15,
+    paddingBottom: 15,
     fontWeight: "300",
     color: "#333",
     position: "absolute",
-    top: 102,
+    top: 60,
     left: 22,
     textShadowColor: "rgba(0, 0, 0, 0.5)",
     textShadowOffset: { width: -1, height: 1 },
