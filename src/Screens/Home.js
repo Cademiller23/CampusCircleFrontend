@@ -1,281 +1,346 @@
 import { Entypo, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import React, {useState, useRef, useEffect, useMemo} from 'react';
-import {View, StyleSheet, Alert, Text, ScrollView, Pressable, FlatList, Image, Animated, Dimensions,Modal, Easing, TouchableOpacity, ActivityIndicator} from 'react-native';
-import {widthPercentageToDP as wp, heightPercentageToDP as hp} from 'react-native-responsive-screen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Loading from '../Components/Loading';
-import { render } from 'react-dom';
+import React, { useState, useEffect, useContext } from 'react';
+import { View, StyleSheet, Alert, Text, ScrollView, FlatList, Image, Dimensions, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-const {width} = Dimensions.get('window');
-const NUM_COLUMNS = 3;
-const GRID_CARD_CONTAINER_PADDING_HORIZONTAL = 2; // Padding within the container
+import Loading from '../Components/Loading';
+import PollItem from '../Components/PollItem';
+import { PollContext } from '../Components/PollContext';
+import { Video } from 'expo-av';
+
+const { width } = Dimensions.get('window');
+const NUM_COLUMNS = 2;
+const GRID_CARD_CONTAINER_PADDING_HORIZONTAL = 2;
 const ITEM_MARGIN = 2;
-const MAX_GRID_HEIGHT = 314; // Set your desired max height here
-/*
-    Post Count only updates when their posts have a like count 
-*/
-const Divider = () => {
-    return (
-        <View style={styles.divider} />
-    );
-};
+const MAX_GRID_HEIGHT = 314;
 
-export default function Home({route, navigation}) {
-    const [userData, setUserData] = useState(null); 
-    const [profileImage, setProfileImage] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [posts, setPosts] = useState([]);
-    const [page, setPage] = useState(1);
-    const [comments, setComments] = useState([]);
-    const [hasMore, setHasMore] = useState(true);
-    const itemWidth = (width - 2 * GRID_CARD_CONTAINER_PADDING_HORIZONTAL - (NUM_COLUMNS - 1) * ITEM_MARGIN) / NUM_COLUMNS;
-    const userId  = route?.params?.userId;
-    const isFocused = useIsFocused();
-    const [savedPhotos, setSavedPhotos] = useState([]);
+const Divider = () => <View style={styles.divider} />;
 
-    useEffect(() => {
+export default function Home({ route, navigation }) {
+  const [userData, setUserData] = useState(null); 
+  const [profileImage, setProfileImage] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [posts, setPosts] = useState([]);
+  const [page, setPage] = useState(1);
+  const [comments, setComments] = useState([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [savedPhotos, setSavedPhotos] = useState([]);
+  const [imageLoadedState, setImageLoadedState] = useState([]); 
+  const itemWidth = (width - 2 * GRID_CARD_CONTAINER_PADDING_HORIZONTAL - (NUM_COLUMNS - 1) * ITEM_MARGIN) / NUM_COLUMNS;
+  const isFocused = useIsFocused();
+  const [totalLikes, setTotalLikes] = useState(0);
+  const [totalPosts, setTotalPosts] = useState(0);
+  const [polls, setPolls] = useState([]);
+  const { userVotes, handlePollOptionSelect, polls: contextPolls } = useContext(PollContext);
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      await Promise.all([fetchUserData(), fetchPosts(1), fetchSavedPosts(), fetchUserTotalPosts(), fetchUserTotalLikes(), fetchComments(), fetchuserPolls(1)]);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching data.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+ 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', fetchData);
+    return unsubscribe;
+  }, [navigation, isFocused]);
 
-      
-        const fetchUserData = async () => {
-            try {
-                    const response = await fetch('http://127.0.0.1:5000/users/me'); //Fetch by ID ; // Fetch by ID
-                    console.log(response)
-                    if(response.ok) {
-                        const userData = await response.json();
-                        console.log(userData)
-                        setUserData(userData);
-                        setProfileImage(`data:image/jpeg;base64,${userData.profile_picture}`);
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/users/me');
+      if (response.ok) {
     
-                    } else {
-                        throw new Error('User data not found');
-                    }
-               
-            } catch (error) {
-                Alert.alert('Error', 'An error occured while fetching user data.');
-                console.error(error);
-            }  finally {
-                setIsLoading(false);
-            }
-        };
+        const data = await response.json();
+        setUserData(data);
+        setProfileImage(`data:image/jpeg;base64,${data.profile_picture}`);
+       
+      } else {
+        throw new Error('Failed to fetch user Data');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching user data.');
+    }
+  };
+  const fetchuserPolls = async (currentPage) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/get_user_polls?page=${currentPage}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (currentPage === 1) {
+          setPolls(data.polls || []);
+        } else {
+          setPolls(prevPolls => [...prevPolls, ...(data.polls || [])]);
+        }
+        setHasMore(data.has_next);
+      } else {
+        throw new Error('Failed to fetch user polls');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching user polls.');
+    }
+  };
   
-            fetchUserData();
-            fetchPosts(page);
-            fetchSavedPosts();
+
+  const fetchUserTotalPosts = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/user_total_posts');
+      if (response.ok) {
+        const data = await response.json();
+        setTotalPosts(data.total_posts || 0);
+      } else {
+        Alert.alert('Error', 'Failed to fetch total posts');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching total posts.');
+    }
+  };
+
+  const fetchUserTotalLikes = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/user_total_likes');
+      if (response.ok) {
+        const data = await response.json();
+        setTotalLikes(data.total_likes || 0);
+      } else {
+        Alert.alert('Error', 'Failed to fetch total likes');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching total likes.');
+    }
+  };
+
+  const fetchPosts = async (currentPage) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/posts?page=${currentPage}`);
+      if (response.ok) {
+        const data = await response.json();
+        const newPosts = data.posts || [];
+        if (currentPage === 1) {
+          setPosts(newPosts);
+        } else {
+          setPosts(prevPosts => [...prevPosts, ...newPosts]);
+        }
+        setHasMore(data.has_next);
+        setImageLoadedState(new Array(newPosts.length).fill(false));
+      } else {
+        throw new Error('Posts not found');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching posts.');
+    }
+  };
+
+  const fetchSavedPosts = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/saved_posts');
+      if (response.ok) {
+        const data = await response.json();
+        setSavedPhotos(data);
+      } else {
+        throw new Error('Saved Posts not found');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching saved posts.');
+    }
+  };
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/comments/me');
+      if (response.ok) {
+        const data = await response.json();
+        setComments(data);
+      } else {
+        throw new Error('Comments not found');
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'An error occurred while fetching comments.');
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPosts(nextPage);
+    }
+  };
+  const handleLoadMorePolls = () => {
+    if (hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchuserPolls(nextPage);
+    }
+  };
+
+  const handleImageLoad = (index) => {
    
-     
-    }, []);
-    const fetchSavedPosts = async () => {
-        try {
-            setIsLoading(true);
-            const response = await fetch(`http://127.0.0.1:5000/saved_posts`);
-            if(response.ok) {
-                const saved_photo_data = await response.json();
-                setSavedPhotos(saved_photo_data);
+    setImageLoadedState(prevState => {
+      const newState = [...prevState];
+      newState[index] = true;
+      return newState;
+    });
+  };
 
-            } else {
-                throw new Error('Saved Posts not found');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'An error occured while fetching Saved Posts.');
-            console.error(error);
-        }
-    };
-    const fetchComments = async ()=> {
-        try {
-            setIsLoading(true);
-            const response = await fetch(`http://127.0.0.1:5000/comments/me`);
-
-            if(response.ok) {
-                const data = await response.json();
-                setComments(data); // Directly set the comment from the API response
-            } else {
-                throw new Error('Comments not found');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'An error occured whilefetching comments.');
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
-    }
-    useEffect(() => {
-
-        // Check if we should refetch posts (After a new post is created)
-        const unsubscribe = navigation.addListener('focus', () => {
-            if(userData) { // ensure user
-                setPage(1);
-                fetchPosts(1); // fetch the first page again
-                fetchComments();
-            }
-        });
-        return unsubscribe; // Clean up the listener
-    }, [isFocused, userData]);
-    // Sample data for the FlatLists 
-    const fetchPosts = async (currentPage) => {
-        try {
-            const response = await fetch(`http://127.0.0.1:5000/posts`);
-            
-            if(response.ok) {
-                const data = await response.json();
-              
-                const newPosts = data.posts || []; 
-                if(currentPage === 1) {
-                    setPosts(data.posts)
-                } else {
-                    setPosts(prevPosts => [...prevPosts, data.posts]);
-                }
-            setHasMore(data.has_next);
-            } else {
-                throw new Error('Posts not found');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'An error occured while fetching posts.')
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    const handleLoadMore = () => {
-        if(hasMore) {
-            const nextPage = page + 1;
-            setPage(nextPage);
-            fetchPosts(nextPage);
-        }
-    };
-
-    const [imageLoaded, setImageLoaded] = useState(false);
-    const renderItem = ({ item}) => {
-        const base64Image = `data:${item.content_type};base64,${item.content_url}`;
-        const uniqueKey = item.id ? item.id.toString() : Math.random().toString();
-        return (
-            <View style={[styles.gridItem, { width: itemWidth, height: itemWidth }]}> 
-            {!imageLoaded && <ActivityIndicator size="small" />}
-                <Image source={{ uri: base64Image }} style={styles.gridImage}
-                onLoad={() => setImageLoaded(true)}/>
-            </View>
-        );
-    }
-    const renderCommentItem = ({ item }) => {
-        return (
-            <View style={styles.commentItem}>
-                <Text style={styles.commentText}>{item.text}</Text>
-            </View>
-        );
-    }
-    renderSavedItem = ({ item }) => {
-        const base64Image = `data:${item.content_type};base64,${item.content_url}`;
+  const renderItem = ({ item, index }) => {
+    const base64Uri = `data:${item.content_type};base64,${item.content_url}`;
+    const isVideo = item.content_type.startsWith('video');
     return (
       <View style={[styles.gridItem, { width: itemWidth, height: itemWidth }]}>
-        <Image source={{ uri: base64Image }} style={styles.gridImage} />
+      
+
+       {isVideo ? (
+        <Video
+        source={{ uri: base64Uri }}
+        style={styles.gridVid}
+        useNativeControls
+        resizeMode="cover"
+        onLoad={() => handleImageLoad(index)} // Ensure this callback is attached
+        shouldPlay={true} // Ensure video is set to play automatically if needed
+        isLooping={false} 
+        onError={(e) => console.error("Video Error: ", e)}
+        />
+          ) : (
+            <Image 
+          source={{ uri: base64Uri }} 
+          style={styles.gridImage}
+          onLoad={() => handleImageLoad(index)} 
+          />
+         
+          )}
       </View>
     );
   };
-   
-    return (
-        <View style={styles.container}>
-            <ScrollView>
-            <View style={styles.headerProfileContainer}>
-              {isLoading ? (
-                    <Loading /> 
-                ) : userData ? ( 
-                    <View stle={styles.Homeheader}>
-                        <Image
-                            source={{ uri: profileImage }} // Fallback image
-                            style={styles.profileImage} 
-                            onError={(e) => console.error("Image loading error: ", e.nativeEvent.error)}
-                            defaultSource={require('./../../assets/Cade.jpeg')}
-                        />
-                        <View style={styles.userInfoContainer}>
-                            <Text style={styles.username}>{userData.username}</Text>
-                            <View style={styles.statsContainer}>
-                                <View style={styles.statItem}>
-                                    <Text style={styles.statLabel}>Upvotes:</Text>
-                                    <Text style={styles.statValue}>2{/*UPVOTE COUNTER */}</Text>
-                                </View>
-                                <View style={styles.statItem}>
-                                     <Text style={styles.statLabel}>Posts:</Text>
-                                      <Text style={styles.statValue}>2{/* Add post count here */}</Text>
-                              </View>
-                          </View>
-                            </View>
-                    </View>
-                ) : (
-                    <Text>No user data available</Text> // Display message if userData is still null after loading
-                )}
+
+  const renderCommentItem = ({ item }) => (
+    <View style={styles.commentItem}>
+      <Text style={styles.commentText}>{item.text}</Text>
+    </View>
+  );
+
+  const renderPollItem = ({ item }) => {
+  if (!item || !item.id) { 
+      return null;
+  }
+   return <PollItem poll={item} key={item.id} onSelectOption={handlePollOptionSelect} userVotes={userVotes}   />;
+};
+
+  const handleGalleryPress = () => {
+    const allPhotos = [...(Array.isArray(posts) ? posts : []), ...(Array.isArray(savedPhotos) ? savedPhotos : [])];
+    navigation.navigate('GalleryPage', { photos: allPhotos });
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView>
+        <View style={styles.headerProfileContainer}>
+          {isLoading ? (
+            <Loading />
+          ) : userData ? (
+            <View style={styles.Homeheader}>
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.profileImage}
+                onError={(e) => console.error("Image loading error: ", e.nativeEvent.error)}
+              />
+              <View style={styles.userInfoContainer}>
+                <Text style={styles.username}>{userData.username}</Text>
+                <View style={styles.statsContainer}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Total Likes:</Text>
+                    <Text style={styles.statValue}>{totalLikes}</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Posts:</Text>
+                    <Text style={styles.statValue}>{totalPosts}</Text>
+                  </View>
                 </View>
-       <View style={[styles.gridCardContainer, {maxHeight: MAX_GRID_HEIGHT}]}>
-        <TouchableOpacity style={styles.galleryHeader}>
-            <Text style={styles.galleryText}>Gallery...</Text>
-        <Entypo name="arrow-with-circle-right" size={24} color='black' />
-        </TouchableOpacity>
-        <Divider/>
-       
-                        <FlatList
-                            data={posts}
-                            renderItem={renderItem}
-                            keyExtractor={(item) => item.id?.toString() ?? Math.random().toString()}
-                            numColumns={NUM_COLUMNS}
-                            contentContainerStyle={styles.flatListContentContainer}
-                            onEndReached={handleLoadMore}
-                            onEndReachedThreshold={0.1}
-                            ListFooterComponent={hasMore && <ActivityIndicator size="large" color="#007AFF" />}
-                            ListEmptyComponent={!isLoading && <Text style={styles.noPostsText}>No Posts Yet. Start Sharing!</Text>}
-                        />
-            
+              </View>
+            </View>
+          ) : (
+            <Text>No user data available</Text>
+          )}
+        </View>
+        <View style={[styles.gridCardContainer, { maxHeight: MAX_GRID_HEIGHT }]}>
+          <TouchableOpacity style={styles.galleryHeader} onPress={handleGalleryPress}>
+            <Text style={styles.galleryText}>Gallery (Posts & Saved Posts)...</Text>
+            <Entypo name="arrow-with-circle-right" size={24} color='black' />
+          </TouchableOpacity>
+          <Divider />
+          <FlatList
+            data={posts}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id?.toString() ?? Math.random().toString()}
+            numColumns={NUM_COLUMNS}
+            contentContainerStyle={styles.flatListContentContainer}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.1}
+            ListFooterComponent={hasMore && <ActivityIndicator size="large" color="#007AFF" />}
+            ListEmptyComponent={!isLoading && <Text style={styles.noPostsText}>No Posts Yet. Start Sharing!</Text>}
+          />
         </View>
         <View style={styles.gridCardContainer}>
-        <TouchableOpacity style={styles.galleryHeader}>
-            <Text style={styles.galleryText}>All Saved...</Text>
-        <Entypo name="arrow-with-circle-right" size={24} color='black' />
-        </TouchableOpacity>
-
-        <FlatList
-                            data={savedPhotos}
-                            renderItem={renderSavedItem}
-                            keyExtractor={(item) => item.id?.toString() ?? Math.random().toString()}
-                            numColumns={NUM_COLUMNS}
-                            contentContainerStyle={styles.flatListContentContainer}
-                            onEndReached={handleLoadMore}
-                            onEndReachedThreshold={0.1}
-                            ListFooterComponent={hasMore && <ActivityIndicator size="large" color="#007AFF" />}
-                            ListEmptyComponent={!isLoading && <Text style={styles.noPostsText}>No Posts Yet. Start Sharing!</Text>}
-                        />
-        </View> 
-        <View style={styles.gridCardContainer}>
-        <TouchableOpacity style={styles.galleryHeader}>
+          <TouchableOpacity style={styles.galleryHeader} onPress={() => navigation.navigate('AllComments', { comments })}>
             <Text style={styles.galleryText}>All Comments...</Text>
-        <Entypo name="arrow-with-circle-right" size={24} color='black' />
-        <Divider/>
-        </TouchableOpacity>
-        {isLoading ? (
+            <Entypo name="arrow-with-circle-right" size={24} color='black' />
+          </TouchableOpacity>
+          <Divider />
+          {isLoading ? (
             <ActivityIndicator size="large" color="#007AFF" style={styles.loadingIndicator} />
           ) : (
-       
-        <FlatList
-        data={comments}
-        renderItem={renderCommentItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.flatListContentContainer}
-        ListEmptyComponent={() => <Text style={styles.noPostsText}>No Comments Yet</Text>}
-                        />
+            <FlatList
+              data={comments}
+              renderItem={renderCommentItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.flatListContentContainer}
+              ListEmptyComponent={() => <Text style={styles.noPostsText}>No Comments Yet</Text>}
+            />
           )}
-       
-    {/*
-    Comment FlatList of all the comments
-     */}
         </View> 
-        </ScrollView>
-        </View>
-    );
-          
+        <View style={styles.gridCardContainer}>
+          <TouchableOpacity style={styles.galleryHeader}>
+            <Text style={styles.galleryText}>All Polls...</Text>
+            <Entypo name="arrow-with-circle-right" size={24} color='black' />
+          </TouchableOpacity>
+          <Divider />
+          {isLoading ? (
+            <ActivityIndicator size="large" color="#007AFF" style={styles.loadingIndicator} />
+          ) : (
+            <FlatList
+              data={polls}
+              renderItem={renderPollItem}
+              keyExtractor={(item, index) => `poll_${index}`}
+              onEndReached={handleLoadMorePolls}
+              onEndReachedThreshold={0.1}
+              ListFooterComponent={hasMore && <ActivityIndicator size="large" color="#007AFF" />}
+              ListEmptyComponent={<Text>No polls available.</Text>}
+            />
+          )}
+        </View> 
+      </ScrollView>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create ({
+    chevronIcon: {
+        marginLeft: 'auto',
+        paddingHorizontal: 10,
+    },
     commentItem: {
         padding: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#ddd',
-
     },
     loadingIndicator: {
         marginTop: 20,
@@ -304,6 +369,7 @@ const styles = StyleSheet.create ({
         height: 80, 
         borderRadius: 40,
         marginRight: 16,
+        alignSelf: 'center'
     },
     userInfoContainer: {
         flex: 1,
@@ -311,7 +377,11 @@ const styles = StyleSheet.create ({
     },
     username: {
         fontSize: 24,
-        fontWeight: '700',
+        fontFamily: 'san fransisco',
+        shadowColor: 'grey',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.6,
+        shadowRadius: 3,
         marginBottom: 8,
     },
     statsContainer: {
@@ -324,11 +394,15 @@ const styles = StyleSheet.create ({
         fontSize: 14,
         color: '#888',
         marginBottom: 4,
-
     },
     statValue: {
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    gridVid: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover'
     },
     container: {
         flex: 1,
@@ -340,7 +414,7 @@ const styles = StyleSheet.create ({
         flexDirection: 'row',
         padding: 4
     },
-     divider: {
+    divider: {
         height: 1,
         width: '100%',
         backgroundColor: 'neutral-200',
@@ -354,26 +428,25 @@ const styles = StyleSheet.create ({
         backgroundColor: '#f2f2f2',
         marginHorizontal: 12,
         borderRadius: 20,
-        justifyContent: 'center', // Center vertically
-        alignItems: 'center', // Center horizontally
-        
-        // Add Drop Shadow
-        shadowColor: 'black', // Color of the shadow
-        shadowOffset: { width: 0, height: 2 }, // Shadow offset (horizontal, vertical)
-        shadowOpacity: 0.3, // Shadow opacity (0-1)
-        shadowRadius: 3, // Shadow blur radius
-    },  gridCardContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: 'black',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+    },  
+    gridCardContainer: {
         flex: 1,
         backgroundColor: '#f2f2f2',
         margin: 12,
         borderRadius: 20,
         padding: 20,
-        // Add Drop Shadow
-        shadowColor: 'black', // Color of the shadow
-        shadowOffset: { width: 0, height: 2 }, // Shadow offset (horizontal, vertical)
-        shadowOpacity: 0.3, // Shadow opacity (0-1)
-        shadowRadius: 3, // Shadow blur radius
-    },profilePhotoText: {
+        shadowColor: 'black',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+    },
+    profilePhotoText: {
         fontSize: 24,
         fontWeight: 'bold',
         color: '#333',
@@ -387,43 +460,44 @@ const styles = StyleSheet.create ({
         fontSize: 20,
         fontWeight: '600',
         color: '#6366f1',
-    },iconContainer: {
+    },
+    iconContainer: {
         flexDirection: 'row',
-        justifyContent: 'center', // Key for positioning
+        justifyContent: 'center',
         alignItems: 'center',
         marginTop: 20,
-      },
-      icon: {
-      paddingHorizontal: 20,
-        // Add Drop Shadow
-        shadowColor: '#6366f1', // Color of the shadow
-        shadowOffset: { width: 0, height: 2 }, // Shadow offset (horizontal, vertical)
-        shadowOpacity: 0.6, // Shadow opacity (0-1)
-        shadowRadius: 3, // Shadow blur radius
-      },
-      gridItem: {
+    },
+    icon: {
+        paddingHorizontal: 20,
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.6,
+        shadowRadius: 3,
+    },
+    gridItem: {
         marginBottom: ITEM_MARGIN,
-        marginHorizontal: ITEM_MARGIN / 2, // Half margin on each side
+        marginHorizontal: ITEM_MARGIN / 2,
         borderRadius: 10,
-        overflow: 'hidden', // Clip the image to the rounded corners
-    },gridImage: {
+        overflow: 'hidden',
+    },
+    gridImage: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
     },
-    
     flatListContentContainer: {
-        paddingHorizontal: ITEM_MARGIN / 2, // Half margin on each side
-    }, modalContainer: {
+        paddingHorizontal: ITEM_MARGIN / 2,
+    },
+    modalContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)', // Darken background
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
     },
     modalImage: {
         width: '90%',
         height: '80%',
-        resizeMode: 'contain', // Maintain aspect ratio
+        resizeMode: 'contain',
     },
     closeButton: {
         marginTop: 20,

@@ -1,10 +1,11 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {View, Text, Image, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator, ScrollView} from 'react-native';
-import { genAI } from '../geminiUse';
+import {Ionicons } from '@expo/vector-icons';
 import { Buffer } from 'buffer';
+import { Video } from 'expo-av';
 export default function CameraStyling({route, navigation}) {
   
-    const {photoUri} = route.params;
+    const {photoUri, isVideo} = route.params;
     const [prompt, setPrompt] = useState('');
     const [styledImageUri, setStyledImageUri] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -13,71 +14,65 @@ export default function CameraStyling({route, navigation}) {
     const handleCategoryPress = (category) => {
       setSelectedCategory(category);
     }
-    async function fileToGenerativePart(file) {
-      const base64EncodedDataPromise = new Promise()
-    }
-    async function applynewStyle() {
-      const model = genAI.getGenerativeModel({model: 'gemini-1.5-flash'});
-      const text = `Generate an image that looks like this but in the style of ${prompt}`;
-
-    
-      const image = {
-        inlineData: {
-          data: base64EncodedImage,
-          mimeType: "image/jpeg"
-        },
-      };
-      const result = await model.generateContent([text, image]);
-      console.log(result.response.text());
-    }
+   
+    useEffect(() => {
+      if(styledImageUri) {
+        forceUpdate();
+      }
+      }, [styledImageUri]);
+  
     async function applyStyle() {
-        setLoading(true);
-        try {
-          
-          const apiKey = process.env.API_KEY;
-          console.log(apiKey)
-          const text = `Generate an image that looks like this but in the style of ${prompt}`;
-          const apiUrl = `https://generativeai.googleapis.com/v1beta2/models/test-bison@001:generateImage?key=${apiKey}`;
-          const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
+      if (isVideo) {
+        Alert.alert('Cannot apply style to video', 'You cannot apply styles to a video.');
+        return;
+      }
+      setLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append('image', {
+          uri: photoUri,
+          type: 'image/png',
+          name: 'image.png',
 
-              },
-              body: JSON.stringify({
-                prompt: {
-                  text: text,
-                }
-              }),
-            });
-            const data = await response.json();
-            console.log("DATA", data)
-            if (response.ok && data.candidates && data.candidates.length > 0) {
-                setStyledImageUri(data.candidates[0].uri);
-              } else {
-                console.error('Error from Gemini:', data.error || 'No image candidates returned');
-                Alert.alert('API Error', 'Could not generate styled image');
-              }
-        } catch (error) {
-            console.error('Network error:', error);
-            Alert.alert('Network Error', 'Could not connect to the API');
-        } finally {
-            setLoading(false);
-        }
-    };
+        });
+        formData.append('prompt', prompt);
+        formData.append('content_type', 'image/png');
+        formData.append('content_url', photoUri);
+
+        const response = await fetch('http://127.0.0.1:5000/manipulate_image', {
+          method: 'POST',
+          body: formData,
+      });
+      const data = await response.json();
+      console.log(data)
+      if(response.ok) {
+        setStyledImageUri(data.manipulate_image_url);
+        setPrompt('');
+      } else {
+        console.error('Error from API:', data.error || 'Unknown error');
+        Alert.alert('API Error', 'Could not manipulate the image');
+      }
+      } catch (error) {
+      console.error('Network error:', error);
+      Alert.alert("Network Error", "could not connect to the API");
+
+      } finally {
+      setLoading(false);
+    }
+    }
     async function handleCreateImage() {
-      const imageUri = photoUri;
+      const imageUri = styledImageUri || photoUri;
       const formData = new FormData();
 
       formData.append('newImage', {
           uri: imageUri,
-          type: 'image/jpeg',
-          name: 'newImage.jpg',
+          type: isVideo ? 'video/mp4' : 'image/png',
+          name: isVideo ? 'newVideo.mp4' : 'newImage.png',
       });
       console.log(imageUri)
         // Add the content type and URL if they are available
   if (styledImageUri) {
-    formData.append('content_type', 'image/jpeg');
+    formData.append('content_type', 'image/png');
     formData.append('content_url', imageUri);
     }
     if(selectedCategory) {
@@ -115,10 +110,17 @@ export default function CameraStyling({route, navigation}) {
       
   };
     return (
-        <View style={StyleSheet.container}>
+        <View style={styles.container}>
             <View style={styles.imageContainer}>
-            {styledImageUri ? (
-                <Image source={{uri: styledImageUri}} style={styles.image} />
+            {isVideo ? (
+           <Video
+           source={{ uri: photoUri }}
+           style={styles.image}
+           useNativeControls
+           resizeMode="contain"
+       />
+            ) : styledImageUri ? (
+                <Image source={{uri: styledImageUri, cache: 'reload'}} style={styles.image} />
             ) : (
               <View style={styles.ImageContainer}>
                 <Image source={{uri: photoUri}} style={styles.image} />
@@ -126,17 +128,25 @@ export default function CameraStyling({route, navigation}) {
             )}
             {loading && <ActivityIndicator size="large" color="#007AFF" style={styles.loadingIndicator} />}
 </View>
+{!isVideo && (
+    <View style={styles.applyButtonContainer}>
             <TextInput
             style={styles.promptInput}
-            placeholder="Enter prompt for Gemini"
+            placeholder="Write a prompt to generate a new Image!"
             value={prompt}
             onChangeText={setPrompt}
+            placeholderTextColor="rgba(255, 255, 255, 0.5)"
+            multiline
             />
-            <TouchableOpacity onPress={applynewStyle} style={styles.applyButton}>
-                <Text style={styles.applyButtonText}>Apply Style</Text>
-            </TouchableOpacity>
+           
+        <TouchableOpacity onPress={applyStyle} style={styles.applyButton}>
+          <Ionicons name="brush" size={12} color="white" />
+        </TouchableOpacity>
+       
+      </View>
+      )}
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                {['frat', 'laughs', 'education'].map(category => (
+                {['So Frat', 'Laughs', 'Education', 'Football', 'Dining Hall Fails', 'Need Adivce', 'Trojan Talk'].map(category => (
                   <TouchableOpacity
                   key={category}
                   onPress={() => handleCategoryPress(category)}
@@ -147,8 +157,8 @@ export default function CameraStyling({route, navigation}) {
                 ))}
               </ScrollView>
               {/* Submit Button */}
-            <TouchableOpacity onPress={handleCreateImage} style={styles.applyButton}>
-              <Text style={styles.applyButtonText}>Submit</Text>
+            <TouchableOpacity onPress={handleCreateImage} style={styles.submitButton}>
+              <Text style={styles.submitButtonText}>Submit</Text>
             </TouchableOpacity>
         </View>
     )
@@ -161,14 +171,17 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   categoryButton: {
-    backgroundColor: '#333',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 16,
     marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   selectedCategoryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: 'rgba(0, 122, 255, 0.3)',
   },
   categoryButtonText: {
     color: 'white',
@@ -180,18 +193,17 @@ const styles = StyleSheet.create({
     margin: 12,
     borderRadius: 20,
     padding: 20,
-    // Add Drop Shadow
     shadowColor: 'black', // Color of the shadow
     shadowOffset: { width: 0, height: 2 }, // Shadow offset (horizontal, vertical)
     shadowOpacity: 0.3, // Shadow opacity (0-1)
     shadowRadius: 3, // Shadow blur radius
+    overflow: 'hidden', // To clip the image to the rounded corners
   },
     container: {
       flex: 1,
-      backgroundColor: '#121212', // Dark background
-      alignItems: 'center',
+      backgroundColor: '#101010', // Dark background
       justifyContent: 'center',
-      padding: 20,
+      
     },
     imageContainer: {
       width: '100%',
@@ -211,22 +223,45 @@ const styles = StyleSheet.create({
       position: 'absolute',
     },
     promptInput: {
+    width: '100%',
+    height: 100,
+    backgroundColor: '#333', // Dark gray background
+    borderRadius: 12,
+    padding: 15,
+    color: 'white',
+    fontSize: 16,
+    marginBottom: 15,
+    textAlignVertical: 'top',
+    
+    },
+    applyButtonContainer: {
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      paddingHorizontal: 5,
       width: '100%',
-      backgroundColor: '#222',
-      borderRadius: 8,
-      padding: 10,
-      color: 'white',
+      alignItems: 'flex-end', // Align to the right
       marginBottom: 15,
     },
     applyButton: {
-      backgroundColor: '#007AFF', // Blue button
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      borderRadius: 8,
+      position: 'absolute', // Position the button absolutely
+      right: 15, // Position it on the right inside the TextInput
+      top: 55, // Adjust top position to align with TextInput
+      backgroundColor: '#007AFF',
+      padding: 10,
+      borderRadius: 20,
     },
-    applyButtonText: {
+  
+    submitButton: {
+      backgroundColor: '#1C1C1E', 
+      paddingVertical: 10,
+      borderRadius: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 20,
+    },
+    submitButtonText: {
       color: 'white',
       fontWeight: 'bold',
-      fontSize: 16,
+      fontSize: 14,
     },
   });

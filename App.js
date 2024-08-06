@@ -4,7 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons, Feather, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import prompt_ai from './src/Screens/prompt_ai'
 import Home from './src/Screens/Home';
 import Explorepage from './src/Screens/Explorepage';
 import Camera from './src/Screens/Camera';
@@ -13,25 +13,25 @@ import SignUp from './src/Screens/SignUp';
 import ProfileSetup from './src/Screens/ProfileSetup';
 import Loading from './src/Components/Loading';
 import CameraStyling from './src/Screens/CameraStyling';
+import AllComments from './src/Components/AllComments';
+import GalleryPage from './src/Components/GalleryPage';
+import CustomTabBar from './src/Components/CustomTabBar';
+import PollModal from './src/Components/PollModal';
+import PollItem from './src/Components/PollItem';
+import { PollContext, PollProvider } from './src/Components/PollContext';
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 function Main() {
   return (
+
     <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#6366f1',
-        tabBarInactiveTintColor: 'gray',
-        tabBarStyle: {
-          backgroundColor: '#f2f2f2',
-          borderTopWidth: 0,
-          elevation: 0,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          marginBottom: 5,
-        },
-      }}
+    screenOptions={({ route}) => ({
+      headerShown: false,  // Disable header for all tab screens
+      tabBarStyle: route.name === 'Camera' ? { display: 'none' } : {}, // Hide tab bar on Camera screen
+    })}
+     tabBar={props => <CustomTabBar {...props} />}
     >
       <Tab.Screen
         name="Home"
@@ -49,6 +49,7 @@ function Main() {
           tabBarIcon: ({ color, size }) => (
             <Feather name="compass" color={color} size={size} />
           ),
+          
         }}
       />
       <Tab.Screen
@@ -58,6 +59,7 @@ function Main() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="camera-outline" color={color} size={size} />
           ),
+          tabBarVisible: false, // Hide tab bar when on the Camera screen
         }}
       />
     </Tab.Navigator>
@@ -92,6 +94,7 @@ export default function App() {
 
 
   return (
+    <PollProvider>
     <NavigationContainer>
     {initialScreen === 'Loading' ? (
       <Loading /> 
@@ -100,8 +103,15 @@ export default function App() {
           <Stack.Screen name="AuthStack" component={AuthStack} />
           <Stack.Screen name="Main" component={Main} options={{ headerShown: false }} />
           <Stack.Screen name="CameraStyling" component={CameraStyling}options={{ headerShown: false }} />
+          <Stack.Screen name="prompt_ai" component={prompt_ai} options={{headerShown: false}} />
+          <Stack.Screen name="AllComments" component={AllComments} options={{headerShown: false}}/>
+          <Stack.Screen name="GalleryPage" component={GalleryPage} options={{headerShown: false}}/>
+          <Stack.Screen name="PollModal" component={PollModal} options={{headerShown: false}}/>
+          <Stack.Screen name="PollItem" component={PollItem} options={{headerShown: false}}/>
+          
       </Stack.Navigator>
     )}
   </NavigationContainer>
+  </PollProvider>
   );
 }
