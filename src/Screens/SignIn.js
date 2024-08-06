@@ -60,8 +60,9 @@ export function SignIn() {
     };
 
     return (
-      
+
            <View style={styles.container}>  
+           <Text style={styles.title}>Sign In</Text>
             {/*SIgnUp Image */}
             <View style={styles.imageContainer}>
             <LottieView 
@@ -71,9 +72,23 @@ export function SignIn() {
                 loop/>
                 </View> 
                 <View style={styles.contentContainer}>
-                <Text style={styles.title}>Sign In</Text>
                 {/*inputs */}
-       
+                <TouchableOpacity  style={styles.googleButton}>
+                    <Image source={require('../../assets/google_logo.png')} style={styles.googleLogo} />
+                    <Text style={styles.googleButtonText}>Sign in with Google</Text>
+                </TouchableOpacity>
+                <Text style={styles.title2}>Or</Text>
+
+                <View style={styles.inputRow}>
+                    <Feather name="user"size={hp(2.7)} color='gray' />
+                    <TextInput
+                    ref={usernameRef}
+                    style={styles.input}
+                    placeholder='Username'
+                    placeholderTextColor={'gray'}/>
+
+                </View>
+
                 <View style={styles.inputRow}>
                     <Octicons name="lock"size={hp(2.7)} color='gray' />
                     <TextInput
@@ -85,15 +100,6 @@ export function SignIn() {
 
                 </View>
 
-                <View style={styles.inputRow}>
-                    <Feather name="user"size={hp(2.7)} color='gray' />
-                    <TextInput
-                    ref={usernameRef}
-                    style={styles.input}
-                    placeholder='Username'
-                    placeholderTextColor={'gray'}/>
-
-                </View>
                 <View> 
                     {
                         loading? (
@@ -113,7 +119,7 @@ export function SignIn() {
                 {/* Sign up text*/}
 
                 <View style={styles.signUpPrompt}>
-                    <Text style={styles.signUpText}>Don't have an account?</Text>
+                    <Text style={styles.signUpText}>Don't have an account? </Text>
                     <Pressable onPress={() => navigation.navigate('SignUp')}> 
                     <Text  style={styles.signUpLink}>Sign Up</Text>
                     </Pressable>
@@ -150,11 +156,40 @@ const styles = StyleSheet.create({
     },
     // Styles for the title text
     title: {
+        top: 30,
         fontSize: hp(4), 
         fontWeight: 'bold', 
         letterSpacing: 1.5, // Add letter spacing
         textAlign: 'center', 
         color: '#333', // Dark gray color
+    },
+    // Styles for the or text
+    title2: {
+        fontSize: hp(2), 
+        fontWeight: 'bold', 
+        letterSpacing: 1.5, // Add letter spacing
+        textAlign: 'center', 
+        color: '#333', // Dark gray color
+    },
+     // Styles for the Google sign-in button
+    googleButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e5e5e5',
+        paddingVertical: hp(1.5),
+        paddingHorizontal: wp(5),
+        borderRadius: 30,
+        marginBottom: hp(2),
+    },
+    googleLogo: {
+        width: hp(3),
+        height: hp(3),
+        marginRight: wp(3),
+    },
+    googleButtonText: {
+        color: '#333',
+        fontSize: hp(2.5),
+        fontWeight: 'bold',
     },
     // Styles for the container holding the input fields
     inputContainer: {
@@ -166,7 +201,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row', 
         gap: 4, 
         paddingHorizontal: 16,
-        backgroundColor: '#f0f0f0', // Light gray background
+        backgroundColor: '#f2f2f2', // Light gray background
         alignItems: 'center', 
         borderRadius: 30, // Rounded corners
     },
@@ -185,7 +220,7 @@ const styles = StyleSheet.create({
     // Sign Up Button
     signInButton: {
         height: hp(6.5),
-        backgroundColor: '#6366f1', // Indigo-500
+        backgroundColor: '#e7c8A0', // Indigo-500
         borderRadius: 20, // Slightly rounded corners
         justifyContent: 'center',
         alignItems: 'center',
@@ -211,7 +246,7 @@ const styles = StyleSheet.create({
     signUpLink: {
         fontSize: hp(1.8),
         fontWeight: '600',
-        color: '#6366f1', // Indigo-500
+        color: '#e7c8A0', // Indigo-500
     },
 });
 export default SignIn;
