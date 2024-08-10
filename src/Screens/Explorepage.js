@@ -398,7 +398,7 @@ return (
   const renderPostItem = ({ item }) => {
     const voteStatus = votes[item.id];
    
-    const base64Image = `data:${item.content_type};base64,${item.content_url}`
+   
     const username = item.username || "Unknown User"; 
     const timeAgo = calculateTimeAgo(item.timestamp); // Calculate time ago
     return (
@@ -407,13 +407,13 @@ return (
        <View style={styles.imageContainer}>
        {item.content_type.startsWith('image') ? (
         <Image
-          source={{ uri: base64Image }}
+          source={{ uri: item.content_url }}
           style={styles.video}
           resizeMode="cover"
         />
         ) : (
           <Video
-          source={{ uri: base64Image }}
+          source={{ uri: item.content_url }}
           style={styles.video}
           useNativeControls
           resizeMode="cover"
@@ -672,7 +672,8 @@ voteCount: {
 },
   headingExplore: {
     justifyContent: 'space-between',
-    flexDirection: 'row'
+    flexDirection: 'row',
+    paddingVertical: 30
   },
   categoryItem: {
     flexDirection: 'row', // Align items in a row

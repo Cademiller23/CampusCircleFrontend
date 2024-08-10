@@ -9,7 +9,7 @@ import { Video } from 'expo-av';
 
 const { width } = Dimensions.get('window');
 const NUM_COLUMNS = 2;
-const GRID_CARD_CONTAINER_PADDING_HORIZONTAL = 2;
+const GRID_CARD_CONTAINER_PADDING_HORIZONTAL = 35;
 const ITEM_MARGIN = 2;
 const MAX_GRID_HEIGHT = 314;
 
@@ -193,7 +193,6 @@ export default function Home({ route, navigation }) {
   };
 
   const renderItem = ({ item, index }) => {
-    const base64Uri = `data:${item.content_type};base64,${item.content_url}`;
     const isVideo = item.content_type.startsWith('video');
     return (
       <View style={[styles.gridItem, { width: itemWidth, height: itemWidth }]}>
@@ -201,7 +200,7 @@ export default function Home({ route, navigation }) {
 
        {isVideo ? (
         <Video
-        source={{ uri: base64Uri }}
+        source={{ uri: item.content_url }}
         style={styles.gridVid}
         useNativeControls
         resizeMode="cover"
@@ -212,7 +211,7 @@ export default function Home({ route, navigation }) {
         />
           ) : (
             <Image 
-          source={{ uri: base64Uri }} 
+          source={{ uri: item.content_url }} 
           style={styles.gridImage}
           onLoad={() => handleImageLoad(index)} 
           />

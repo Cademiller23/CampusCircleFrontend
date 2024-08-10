@@ -13,7 +13,15 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cademiller23.frontend"
+      "bundleIdentifier": "com.cademiller23.frontend",
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["com.googleusercontent.apps.811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu"]
+          }
+        ],
+        "GIDClientID": "811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu.apps.googleusercontent.com"
+      }
     },
     "android": {
       "adaptiveIcon": {

@@ -25,9 +25,11 @@
     <key>CFBundleURLTypes</key>
     <array>
       <dict>
+      <key>GIDClientID</key>
+  <string>811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu.apps.googleusercontent.com</string> 
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.cademiller23.frontend</string>
+         <string>com.googleusercontent.apps.811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu</string>
         </array>
       </dict>
     </array>
@@ -77,6 +79,7 @@
     <key>UIUserInterfaceStyle</key>
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
+
     <false/>
   </dict>
 </plist>

@@ -1,4 +1,5 @@
-import { View, Text, Image, TouchableOpacity, Pressable, TextInput, Alert, Platform, fetch, StyleSheet } from 'react-native';
+// import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { View, Text, Image, TouchableOpacity, Pressable, TextInput, Alert, StyleSheet } from 'react-native';
 import React, {useRef, useState, useEffect} from 'react';
 import {widthPercentageToDP as wp, heightPercentageToDP as hp} from 'react-native-responsive-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -8,22 +9,63 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Loading } from './../Components/Loading';
 import { CustomKeyboardView } from './../Components/CustomKeyboardView';
 import LottieView from 'lottie-react-native'
+
 export function SignIn() {
     const navigation = useNavigation();
     const [loading, setLoading] = useState(false); // State for loading indicator
     const route = useRoute();
     // Create refs for form input values
-    const passwordRef = useRef(null);
-    const usernameRef = useRef(null);
+    const [identifier, setIdentifier] = useState('');
+    const [password, setPassword] = useState('');
+    // Google AUTH
+    // GoogleSignin.configure({
+    //     webClientId: '811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu.apps.googleusercontent.com', // Replace with your actual client ID
+    //     offlineAccess: true, // Enables offline access, useful for server-side integration
+    //     iosClientId: '811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu.apps.googleusercontent.com'
+        
+    //   });
+    //   const handleGoogleSignIn = async () => {
+    //     try {
+    //         await GoogleSignin.hasPlayServices();
+    //         const userInfo = await GoogleSignin.signIn();
+
+    //         // Send ID token to your backend
+    //         const response = await fetch('http://127.0.0.1:5000/auth/callback', {
+    //             method: 'POST',
+    //             headers: { 'Content-Type': 'application/json' },
+    //             body: JSON.stringify({ idToken: userInfo.idToken }),
+    //         });
+
+    //         const data = await response.json();
+
+    //         if (response.ok) {
+    //             await AsyncStorage.setItem('userData', JSON.stringify(data));
+    //             navigation.navigate('Home');
+    //         } else {
+    //             Alert.alert('Google Sign In', data.error || 'Login failed');
+    //         }
+    //     } catch (error) {
+    //         if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+    //             Alert.alert('Google Sign In', 'Sign in cancelled');
+    //         } else {
+    //             Alert.alert('Google Sign In', 'An error occurred');
+    //             console.error('Google Sign-In Error:', error);
+    //         }
+    //     }
+    // };
+
     useEffect(() => {
         // Check if the user is already signed in
         if (route.params?.signedIn) {
-            navigation.navigate('Home');
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              });// Navigate to Home after successful login 
         }
     }, [route.params]); 
     const handleSignIn = async () => {
         // Check if all fields are filled
-        if (!passwordRef.current?.value || !usernameRef.current?.value) {
+        if (!password || !identifier) {
             Alert.alert('Sign Up', 'Please fill all the fields!');
             return;
         }
@@ -31,14 +73,14 @@ export function SignIn() {
         setLoading(true); // Show loading indicator
 
         try {
-            const response = await fetch('http://192.168.30.171:5000/login', {
+            const response = await fetch('http://127.0.0.1:5000/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    username: usernameRef.current.value,
-                    password: passwordRef.current.value,
+                    identifier,
+                    password
                 }),
             });
             const data = await response.json();
@@ -49,7 +91,10 @@ export function SignIn() {
                 Alert.alert('Sign In', data.error || 'Login Failed');
             } else {
                 await AsyncStorage.setItem('userData', JSON.stringify(data)); // Store userData
-                navigation.navigate('Home'); // Navigate to Home after successful login 
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' }],
+                  });// Navigate to Home after successful login 
                 console.log("Sign In Successful", data)
             }
         } catch (error) {
@@ -82,9 +127,10 @@ export function SignIn() {
                 <View style={styles.inputRow}>
                     <Feather name="user"size={hp(2.7)} color='gray' />
                     <TextInput
-                    ref={usernameRef}
+                    value={identifier}
+                    onChangeText={setIdentifier}
                     style={styles.input}
-                    placeholder='Username'
+                    placeholder='Username or email'
                     placeholderTextColor={'gray'}/>
 
                 </View>
@@ -92,7 +138,8 @@ export function SignIn() {
                 <View style={styles.inputRow}>
                     <Octicons name="lock"size={hp(2.7)} color='gray' />
                     <TextInput
-                    ref={passwordRef}
+                    value={password}
+                    onChangeText={setPassword}
                     style={styles.input}
                     placeholder='Password'
                     secureTextEntry

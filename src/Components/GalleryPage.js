@@ -57,7 +57,7 @@ const GalleryPage = ({ route, navigation }) => {
     >
       {item.content_type.startsWith('video') ? (
         <Video
-          source={{ uri: `data:${item.content_type};base64,${item.content_url}` }}
+          source={{ uri: item.content_url }}
           style={styles.media}
           useNativeControls
           resizeMode="cover"
@@ -65,7 +65,7 @@ const GalleryPage = ({ route, navigation }) => {
         />
       ) : (
         <Image
-          source={{ uri: `data:${item.content_type};base64,${item.content_url}` }}
+          source={{ uri: item.content_url }}
           style={styles.media}
         />
       )}
