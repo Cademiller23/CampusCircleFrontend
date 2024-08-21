@@ -14,58 +14,23 @@ import LottieView from 'lottie-react-native'
 export function SignUp() {
     const navigation = useNavigation();
     const [loading, setLoading] = useState(false); // State for loading indicator
-    
-    // GoogleSignin.configure({
-    //     webClientId: '811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu.apps.googleusercontent.com', // Replace with your actual client ID
-    //     offlineAccess: true, // Enables offline access, useful for server-side integration
-    //     iosClientId: '811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu.apps.googleusercontent.com'
-    //   });
-    // Create refs for form input values
+
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [username, setUsername] = useState('');
     
 
-    // const handleGoogleSignUp = async () => {
-    //     try {
-    //         await GoogleSignin.hasPlayServices();
-    //         const userInfo = await GoogleSignin.signIn();
 
-    //         // Send Id token to your backend
-    //         const response = await fetch('http://127.0.0.1:5000/auth/callback', {
-    //             method: 'POST',
-    //             headers: { 'Content-Type': 'application/json' },
-    //             body: JSON.stringify({ idToken: userInfo.idToken }),
-
-    //         });
-
-    //         const data = await response.json();
-
-    //         if(response.ok) {
-    //             await AsyncStorage.setItem('registered', 'true');
-    //             navigation.navigate('ProfileSetup', { userId: data.user.id });
-    //         } else {
-    //             Alert.alert('Google Sign Up', data.error || 'Registration failed');
-    //         }
-    //     } catch (error) {
-    //         if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-    //             Alert.alert('Google Sign Up', 'Sign in cancelled');
-    //         } else {
-    //             Alert.alert('Google Sign Up', 'An error occurred');
-    //             console.error('Google Sign-In Error:', error);
-    //         }
-    //     }
-    // };
-    const handleRegister = async () => {
+    const handleSignUp = async () => {
         // Check if all fields are filled
         if (!email || !password || !username) {
             Alert.alert('Sign Up', 'Please fill all the fields!');
             return;
         }
-        if (!email.endsWith('@usc.edu')) {
-            Alert.alert('Invalid Email', 'Please use your USC Email ending with @usc.edu')
-            return;
-        }
+        // if (!email.endsWith('@usc.edu')) {
+        //     Alert.alert('Invalid Email', 'Please use your USC Email ending with @usc.edu')
+        //     return;
+        // }
         setLoading(true); // Show loading indicator
 
         try {
@@ -75,7 +40,7 @@ export function SignUp() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email, username, password
+                    email, password, username
                 }),
             });
             const data = await response.json();
@@ -85,8 +50,9 @@ export function SignUp() {
                 Alert.alert('Sign Up', data.error || 'Registration Failed');
             } else {
                 // Navigate to profile setup screen with user ID
-                await AsyncStorage.setItem('registered', 'true');
-                navigation.navigate('ProfileSetup', { userId: data.id }); // Use navigation.navigate
+            
+                setLoading(false);
+                navigation.navigate('Verify', { email, username, password });
             }
         } catch (error) {
             setLoading(false); // Hide loading indicator
@@ -159,7 +125,7 @@ export function SignUp() {
                         //    <Loading size={hp(6.5)} />
                         //         </View>
                         // ): (
-                            <TouchableOpacity onPress={handleRegister}  style={styles.signUpButton}>
+                            <TouchableOpacity onPress={handleSignUp}  style={styles.signUpButton}>
                             <Text style={styles.buttonText}>
                                 Sign Up
                             </Text>

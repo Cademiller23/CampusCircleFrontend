@@ -11,6 +11,7 @@ export default function CameraScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [type, setType] = useState('back');
   const [flashMode, setFlashMode] = useState('off');
+
   const [isRecording, setIsRecording] = useState(false);
   const cameraRef = useRef(null);
   const navigation = useNavigation();
@@ -115,9 +116,9 @@ export default function CameraScreen() {
             </TouchableOpacity>
           </BlurView>
         </View>
-        <View style={{top: 320}}>
+        <View style={styles.generateImageContainer}>
         <Text style={{fontSize: 14, color: 'white', fontFamily: 'san fransisco'}}>Generate Image</Text>
-        <Fontisto name="angle-dobule-down" size={14} color="white" style={{top: 16, left: 50}}/>
+        <Fontisto name="angle-dobule-down" size={14} color="white" style={{top: 16}}/>
         </View>
        <View style={styles.pickImageButtonContainer}>
           <BlurView intensity={50} tint="dark" style={styles.blurView}>
@@ -188,6 +189,13 @@ const styles = StyleSheet.create({
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  generateImageContainer: {
+    position: 'absolute',
+    bottom: 320, 
+    left: '1%',
+    transform: [{ translateX: 0 }],
     alignItems: 'center',
   },
   recordingButton: {

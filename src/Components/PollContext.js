@@ -9,7 +9,7 @@ const PollProvider = ({ children }) => {
 
   const handlePollOptionSelect = async (pollId, optionId) => {
     try {
-        const response = await fetch(`http://127.0.0.1:5000/vote_poll/${pollId}/${optionId}`, { method: 'POST' });
+        const response = await fetch(`http://campus-circle.net/vote_poll/${pollId}/${optionId}`, { method: 'POST' });
         if (response.ok) {
             const updatedPoll = await response.json();
 

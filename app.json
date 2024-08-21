@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "frontend",
-    "slug": "frontend",
+    "slug": "campuscircle-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,21 +13,25 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cademiller23.frontend",
+      "bundleIdentifier": "com.campuscircle.CampusCircle",
       "infoPlist": {
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["com.googleusercontent.apps.811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu"]
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu"
+            ]
           }
         ],
         "GIDClientID": "811286224163-blndpamlqm7dfmdre0q4t512pefpb1vu.apps.googleusercontent.com"
-      }
+      },
+      "buildNumber": "15"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.campuscircle.CampusCircle"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,6 +39,14 @@
     "plugins": [
       "expo-router",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "e3195fa8-fe09-48af-b497-7a1da3b2f593"
+      }
+    }
   }
 }

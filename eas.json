@@ -1,0 +1,39 @@
+{
+  "cli": {
+    "version": ">= 10.2.3"
+  },
+  "build": {
+    "development": {
+      "ios": {
+        "simulator": true
+      },
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "ios": {
+        "image": "latest",
+        "distribution": "store",
+        "autoIncrement": true
+      },
+      "android": {
+        "image": "latest",
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "Caderyland1@gmail.com",
+        "ascAppId": "6642643196"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./service_account.json"
+      }
+    }
+  }
+}

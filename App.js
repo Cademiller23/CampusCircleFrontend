@@ -8,7 +8,8 @@ import prompt_ai from './src/Screens/prompt_ai'
 import Home from './src/Screens/Home';
 import Explorepage from './src/Screens/Explorepage';
 import Camera from './src/Screens/Camera';
-import SignIn from './src/Screens/SignIn';
+import Verify from './src/Screens/Verify';
+import  SignIn from './src/Screens/SignIn';
 import SignUp from './src/Screens/SignUp';
 import ProfileSetup from './src/Screens/ProfileSetup';
 import Loading from './src/Components/Loading';
@@ -68,21 +69,23 @@ function Main() {
 function AuthStack() { // Stack for auth screens
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="SignIn" component={SignIn} />
       <Stack.Screen name="SignUp" component={SignUp} />
+      <Stack.Screen name="SignIn" component={SignIn} />
+      <Stack.Screen name="Verify" component={Verify} />
       <Stack.Screen name="ProfileSetup" component={ProfileSetup} /> 
     </Stack.Navigator>
   );
 }
 
 export default function App() {
-  const [initialScreen, setInitialScreen] = useState('Loading');
+  const [initialScreen, setInitialScreen] = useState('AuthStack');
 
   useEffect(() => {
     const checkUserSession = async () => {
       try {
         const userData = await AsyncStorage.getItem('userData');
         setInitialScreen(userData ? 'Main' : 'AuthStack');
+
       } catch (error) {
         console.error('Error checking user session:', error);
         setInitialScreen('AuthStack'); // Default to Auth on error

@@ -30,7 +30,7 @@ export function SignIn() {
     //         const userInfo = await GoogleSignin.signIn();
 
     //         // Send ID token to your backend
-    //         const response = await fetch('http://127.0.0.1:5000/auth/callback', {
+    //         const response = await fetch('http://campus-circle.net/auth/callback', {
     //             method: 'POST',
     //             headers: { 'Content-Type': 'application/json' },
     //             body: JSON.stringify({ idToken: userInfo.idToken }),

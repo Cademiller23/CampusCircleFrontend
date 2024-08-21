@@ -55,7 +55,7 @@ export default function Home({ route, navigation }) {
     
         const data = await response.json();
         setUserData(data);
-        setProfileImage(`data:image/jpeg;base64,${data.profile_picture}`);
+        setProfileImage(data.profile_picture);
        
       } else {
         throw new Error('Failed to fetch user Data');

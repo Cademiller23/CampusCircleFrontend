@@ -167,12 +167,12 @@ export default function CameraStyling({route, navigation}) {
 
 const styles = StyleSheet.create({
   categoryScroll: {
-    marginBottom: 10,
-    padding: 10,
+    marginBottom: 20,
+    padding: 50,
   },
   categoryButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 15,
+    paddingHorizontal: 8,
     borderRadius: 16,
     marginRight: 10,
     justifyContent: 'center',
@@ -252,12 +252,12 @@ const styles = StyleSheet.create({
   
     submitButton: {
       backgroundColor: '#1C1C1E', 
-      paddingVertical: 10,
       borderRadius: 20,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 20,
+
+      padding: 30
     },
     submitButtonText: {
       color: 'white',
